@@ -1,0 +1,148 @@
+---
+import { AvButton, AvCard, AvContainer, AvTimeline } from "@ansiversa/components";
+import AppShell from "../layouts/AppShell.astro";
+import { APP_META } from "../app.meta";
+
+const title = `${APP_META.name} – Ansiversa`;
+const description = APP_META.description;
+
+const timelineItems = [
+  {
+    date: "Step 01",
+    title: "Create the interview",
+    body: "Capture the candidate, role, stage, date, duration, and core context in one record.",
+  },
+  {
+    date: "Step 02",
+    title: "Add interview participants",
+    body: "Add interviewers, observers, and any candidate-side availability you need to compare fairly.",
+  },
+  {
+    date: "Step 03",
+    title: "Choose the best slot",
+    body: "Generate ranked options, review coverage across time zones, and lock the final interview time.",
+  },
+];
+
+const faqItems = [
+  {
+    question: "Does V1 handle multi-day interview loops?",
+    answer: "No. V1 is intentionally focused on one interview session and one date per scheduling workflow.",
+  },
+  {
+    question: "Does it connect to Google or Microsoft calendars?",
+    answer: "No. V1 keeps scheduling deterministic and fast by using direct availability input instead of calendar sync.",
+  },
+  {
+    question: "Can I coordinate across time zones?",
+    answer: "Yes. Every participant is anchored to a real IANA time zone before suggestions are ranked.",
+  },
+];
+---
+
+<AppShell title={title} description={description}>
+  <section class="av-hero tz-hero">
+    <AvContainer size="default">
+      <div class="tz-hero-grid">
+        <div class="av-auth-stack-md">
+          <div class="av-kicker">
+            <span>Career · Ansiversa Mini App</span>
+          </div>
+          <h1 class="av-section-title">Schedule interviews cleanly across time zones.</h1>
+          <p class="av-section-lead">
+            Reduce back-and-forth, keep interview rounds structured, and choose a slot that works
+            for the candidate and the panel.
+          </p>
+          <ul class="av-list">
+            <li>Track interview stage, candidate details, and participant roles in one place</li>
+            <li>Generate ranked slots with required-attendee coverage and fairness built in</li>
+            <li>Keep a clear final selected slot on every interview record</li>
+          </ul>
+          <div class="av-row-wrap">
+            <AvButton href="/app">Start scheduling</AvButton>
+            <AvButton href="/login" variant="ghost">Sign in</AvButton>
+          </div>
+          <p class="av-text-soft">Built for serious interview coordination, not generic meeting clutter.</p>
+        </div>
+
+        <AvCard variant="soft" className="tz-hero-card av-auth-stack-sm">
+          <p class="av-kicker">Why it matters</p>
+          <h2 class="av-card-heading">Interview scheduling breaks down when candidates, interviewers, and time zones are handled in separate tools.</h2>
+          <div class="tz-stat-grid">
+            <div class="tz-stat">
+              <span class="tz-stat-value">1 workflow</span>
+              <span class="av-text-soft">Interview record to final slot</span>
+            </div>
+            <div class="tz-stat">
+              <span class="tz-stat-value">3 tables</span>
+              <span class="av-text-soft">Lean production V1 data model</span>
+            </div>
+            <div class="tz-stat">
+              <span class="tz-stat-value">0 syncs</span>
+              <span class="av-text-soft">No calendar dependency in V1</span>
+            </div>
+          </div>
+        </AvCard>
+      </div>
+    </AvContainer>
+  </section>
+
+  <section class="av-section">
+    <AvContainer size="default">
+      <div class="av-section-header">
+        <div class="av-kicker"><span>How it works</span></div>
+        <h2 class="av-section-title">Three steps to a clean interview schedule</h2>
+        <p class="av-section-lead">Keep hiring coordination structured, readable, and easy to finalize.</p>
+      </div>
+      <AvTimeline items={timelineItems} />
+    </AvContainer>
+  </section>
+
+  <section class="av-section">
+    <AvContainer size="default">
+      <div class="tz-benefit-grid">
+        <AvCard variant="soft" className="av-auth-stack-sm">
+          <h3 class="av-card-heading">Less scheduling chaos</h3>
+          <p class="av-text-soft">Candidate, panel, and observer availability live inside the same interview workflow.</p>
+        </AvCard>
+        <AvCard variant="soft" className="av-auth-stack-sm">
+          <h3 class="av-card-heading">Better coverage decisions</h3>
+          <p class="av-text-soft">See how well each slot covers required interviewers before you commit to it.</p>
+        </AvCard>
+        <AvCard variant="soft" className="av-auth-stack-sm">
+          <h3 class="av-card-heading">Clear final outcome</h3>
+          <p class="av-text-soft">Keep the selected slot visible so handoff into the rest of hiring stays organized.</p>
+        </AvCard>
+      </div>
+    </AvContainer>
+  </section>
+
+  <section class="av-section">
+    <AvContainer size="default">
+      <div class="av-section-header">
+        <h2 class="av-section-title">FAQ</h2>
+        <p class="av-section-lead">Focused V1 boundaries keep the app practical and ship-ready.</p>
+      </div>
+      <div class="tz-faq-grid">
+        {faqItems.map((item) => (
+          <AvCard variant="soft" className="av-auth-stack-xs">
+            <h3 class="av-card-heading">{item.question}</h3>
+            <p class="av-text-soft">{item.answer}</p>
+          </AvCard>
+        ))}
+      </div>
+    </AvContainer>
+  </section>
+
+  <section class="av-section">
+    <AvContainer size="default">
+      <AvCard variant="soft" className="tz-cta-card">
+        <div class="av-auth-stack-xs">
+          <h2 class="av-section-title">Ready to remove interview scheduling friction?</h2>
+          <p class="av-text-soft">Create an interview, add your participants, generate ranked slots, and lock the final time.</p>
+        </div>
+        <AvButton href="/app">Open Interview Scheduler</AvButton>
+      </AvCard>
+    </AvContainer>
+  </section>
+</AppShell>

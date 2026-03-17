@@ -1,0 +1,272 @@
+---
+import {
+  AvBreadcrumb,
+  AvButton,
+  AvCard,
+  AvCheckbox,
+  AvContainer,
+  AvEmptyState,
+  AvInput,
+  AvSelect,
+  AvTextarea,
+} from "@ansiversa/components";
+import { actions } from "astro:actions";
+import CreateDrawer from "../../../components/drawers/CreateDrawer.astro";
+import AppShell from "../../../layouts/AppShell.astro";
+import type { ParticipantType } from "../../../modules/interview-scheduler/types";
+import { formatParticipantTypeLabel } from "../../../modules/interview-scheduler/helpers";
+
+const interviewId = Astro.params.id ?? "";
+const detailResult = await Astro.callAction(actions.interviewScheduler.getInterviewDetail, { id: interviewId });
+const data = (detailResult as any)?.data ?? (detailResult as any) ?? {};
+const detail = data?.detail;
+
+if (!detail) {
+  return Astro.redirect("/app");
+}
+
+const timezoneOptions = Array.isArray(data?.timezoneOptions) ? data.timezoneOptions : [];
+const interviewStages = Array.isArray(data?.interviewStages) ? data.interviewStages : ["Screening"];
+const participantTypes = Array.isArray(data?.participantTypes)
+  ? data.participantTypes
+  : ["candidate", "interviewer", "observer"];
+const initialState = { detail, timezoneOptions, interviewStages, participantTypes };
+
+const title = `${detail.interview.title} – Interview Scheduler`;
+const description = "Manage participants, generate interview slots, and select the final recommendation.";
+---
+
+<AppShell title={title} description={description}>
+  <section class="av-faq-public__crumb">
+    <AvContainer>
+      <AvBreadcrumb items={[{ label: "Home", href: "/" }, { label: "Interviews", href: "/app" }, { label: detail.interview.title }]} />
+    </AvContainer>
+  </section>
+
+  <section class="av-section">
+    <AvContainer>
+      <div
+        class="av-auth-stack-lg"
+        x-data="$store.interviewScheduler"
+        x-init="initDetail(JSON.parse($el.dataset.initial || '{}'))"
+        data-initial={JSON.stringify(initialState)}
+      >
+        <AvCard className="av-auth-stack-md">
+          <div class="av-row-between">
+            <div class="av-auth-stack-xs">
+              <p class="av-kicker">Interview detail</p>
+              <h1 class="av-section-title" x-text="interview?.title || ''"></h1>
+              <p class="av-text-soft">Keep the interview structured, add participants, and lock the final slot with confidence.</p>
+            </div>
+            <div class="av-row-wrap">
+              <AvButton variant="ghost" href="/app">Back to interviews</AvButton>
+              <AvButton variant="ghost" type="button" @click={`if (interview && confirm('Delete this interview permanently?')) deleteInterview(interview.id)`}>Delete</AvButton>
+            </div>
+          </div>
+          <template x-if="error">
+            <div class="av-alert av-alert-danger" role="status" x-text="error"></div>
+          </template>
+          <template x-if="success">
+            <div class="av-alert av-alert-success" role="status" x-text="success"></div>
+          </template>
+        </AvCard>
+
+        <div class="tz-detail-grid">
+          <AvCard className="av-auth-stack-md">
+            <div class="av-row-between">
+              <div class="av-auth-stack-xxs">
+                <h2 class="av-card-heading">Interview settings</h2>
+                <p class="av-text-soft">Changing the date or key interview context resets saved suggestions.</p>
+              </div>
+              <span class="tz-status-badge" :data-status="interview?.status" x-text="interview?.status || 'draft'"></span>
+            </div>
+
+            <form class="av-auth-stack-sm" @submit.prevent="saveInterview()">
+              <AvInput label="Title" name="title" x-model="interviewForm.title" required />
+              <div class="tz-form-grid">
+                <AvInput label="Candidate name" name="candidate-name" x-model="interviewForm.candidateName" required />
+                <AvInput label="Candidate email (optional)" name="candidate-email" type="email" x-model="interviewForm.candidateEmail" />
+              </div>
+              <div class="tz-form-grid">
+                <AvInput label="Role title" name="role-title" x-model="interviewForm.roleTitle" required />
+                <AvInput label="Company name (optional)" name="company-name" x-model="interviewForm.companyName" />
+              </div>
+              <div class="tz-form-grid">
+                <AvSelect label="Interview stage" name="interview-stage" x-model="interviewForm.interviewStage" required>
+                  {interviewStages.map((stage: string) => (
+                    <option value={stage}>{stage}</option>
+                  ))}
+                </AvSelect>
+                <AvInput label="Interview date" name="meeting-date" type="date" x-model="interviewForm.meetingDate" required />
+              </div>
+              <AvInput label="Duration (minutes)" name="duration-minutes" type="number" min="15" step="15" x-model="interviewForm.durationMinutes" required />
+              <AvTextarea label="Notes" name="notes" rows={4} x-model="interviewForm.notes" />
+              <div class="av-row-wrap">
+                <AvButton type="submit" :disabled="loading">Save interview</AvButton>
+                <AvButton variant="ghost" type="button" @click={`if (interview && confirm('Archive this interview?')) archiveInterview(interview.id)`}>Archive</AvButton>
+              </div>
+            </form>
+          </AvCard>
+
+          <AvCard variant="soft" className="av-auth-stack-md">
+            <div class="av-auth-stack-xs">
+              <h2 class="av-card-heading">Selected slot</h2>
+              <template x-if="interview?.selectedSuggestionId && suggestions.find((suggestion) => suggestion.id === interview.selectedSuggestionId)">
+                <div class="tz-suggestion-card" data-selected="true">
+                  <div class="av-auth-stack-xxs">
+                    <span class="tz-required-badge">Final selection</span>
+                    <h3
+                      class="av-card-heading"
+                      x-text="suggestions.find((suggestion) => suggestion.id === interview.selectedSuggestionId)?.timeRangeLabelUtc || ''"
+                    ></h3>
+                    <p
+                      class="av-text-soft"
+                      x-text="suggestions.find((suggestion) => suggestion.id === interview.selectedSuggestionId)?.explanation || 'Selected interview slot.'"
+                    ></p>
+                  </div>
+                </div>
+              </template>
+              <template x-if="!interview?.selectedSuggestionId">
+                <AvEmptyState headline="No final slot selected" description="Generate suggestions and choose one to mark the interview as scheduled." />
+              </template>
+            </div>
+          </AvCard>
+        </div>
+
+        <AvCard variant="soft" className="av-auth-stack-md">
+          <div class="av-row-between">
+            <div class="av-auth-stack-xxs">
+              <h2 class="av-card-heading">Participants</h2>
+              <p class="av-text-soft">Add interviewers, observers, or extra candidate-side participants with local availability.</p>
+            </div>
+            <AvButton type="button" @click="openNewParticipantDrawer()">Add participant</AvButton>
+          </div>
+
+          <template x-if="participants.length === 0">
+            <AvEmptyState headline="No participants yet" description="Add at least one interviewer or observer before generating suggestions." />
+          </template>
+
+          <template x-if="participants.length > 0">
+            <div class="tz-participant-list">
+              <template x-for="participant in participants" :key="participant.id">
+                <div class="tz-participant-card">
+                  <div class="av-row-between">
+                    <div class="av-auth-stack-xxs">
+                      <div class="tz-inline-row">
+                        <h3 class="av-card-heading" x-text="participant.name"></h3>
+                        <span class="tz-required-badge" x-text="participant.participantType"></span>
+                        <span class="tz-required-badge" x-show="participant.isRequired" x-cloak>Required</span>
+                      </div>
+                      <p class="av-text-soft" x-text="participant.email || participant.timezone"></p>
+                    </div>
+                    <div class="av-row-wrap">
+                      <AvButton variant="ghost" type="button" @click="openEditParticipantDrawer(participant)">Edit</AvButton>
+                      <AvButton variant="ghost" type="button" @click={`if (confirm('Remove this participant?')) deleteParticipant(participant.id)`}>Remove</AvButton>
+                    </div>
+                  </div>
+                  <div class="tz-meta-grid">
+                    <p class="av-text-soft"><strong>Type:</strong> <span x-text="participant.participantType"></span></p>
+                    <p class="av-text-soft"><strong>Time zone:</strong> <span x-text="participant.timezone"></span></p>
+                    <p class="av-text-soft"><strong>Availability:</strong> <span x-text="`${participant.availabilityStartLocal} - ${participant.availabilityEndLocal}`"></span></p>
+                    <p class="av-text-soft"><strong>Preferred:</strong> <span x-text="participant.preferredStartLocal && participant.preferredEndLocal ? `${participant.preferredStartLocal} - ${participant.preferredEndLocal}` : 'Not set'"></span></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </AvCard>
+
+        <AvCard variant="soft" className="av-auth-stack-md">
+          <div class="av-row-between">
+            <div class="av-auth-stack-xxs">
+              <h2 class="av-card-heading">Suggestions</h2>
+              <p class="av-text-soft">Generate ranked interview slots based on required coverage, preferred windows, and off-hours fairness.</p>
+            </div>
+            <AvButton type="button" @click="generateSuggestions()" :disabled="suggestionsLoading">Generate suggestions</AvButton>
+          </div>
+
+          <template x-if="suggestions.length === 0">
+            <AvEmptyState headline="No suggestions yet" description="Generate suggestions after adding participants." />
+          </template>
+
+          <template x-if="suggestions.length > 0">
+            <div class="tz-suggestion-list">
+              <template x-for="suggestion in suggestions" :key="suggestion.id">
+                <div class="tz-suggestion-card" :data-selected="suggestion.isSelected ? 'true' : 'false'">
+                  <div class="av-row-between">
+                    <div class="av-auth-stack-xxs">
+                      <div class="tz-inline-row">
+                        <span class="tz-status-badge" :data-status="suggestion.label" x-text="suggestion.label"></span>
+                        <span class="tz-required-badge" x-show="suggestion.isSelected" x-cloak>Selected</span>
+                      </div>
+                      <h3 class="av-card-heading" x-text="suggestion.timeRangeLabelUtc"></h3>
+                      <p class="av-text-soft" x-text="suggestion.explanation || 'Ranked by coverage and fairness.'"></p>
+                    </div>
+                    <div class="av-auth-stack-xxs tz-score-block">
+                      <p class="av-text-soft" x-text="`Coverage ${suggestion.participantCoverage}`"></p>
+                      <p class="av-text-soft" x-text="`Required ${suggestion.requiredCoverage}`"></p>
+                    </div>
+                  </div>
+
+                  <div class="tz-local-times">
+                    <template x-for="localTime in suggestion.localTimes" :key="`${suggestion.id}-${localTime.participantId}`">
+                      <div class="tz-local-time-row" :data-covered="localTime.covered ? 'true' : 'false'">
+                        <div>
+                          <strong x-text="localTime.participantName"></strong>
+                          <span class="av-text-soft" x-text="` · ${localTime.participantType} · ${localTime.timezone}`"></span>
+                        </div>
+                        <p class="av-text-soft" x-text="localTime.timeLabel"></p>
+                      </div>
+                    </template>
+                  </div>
+
+                  <div class="av-row-wrap">
+                    <AvButton type="button" x-show="!suggestion.isSelected" x-cloak @click="selectSuggestion(suggestion.id)">Select interview slot</AvButton>
+                    <span class="av-text-soft" x-show="suggestion.isSelected" x-cloak>Current final slot</span>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </AvCard>
+
+        <template x-if="participantDrawerOpen">
+          <CreateDrawer
+            title="Participant"
+            description="Add local availability in the participant's own time zone."
+            onClose="$store.interviewScheduler.closeParticipantDrawer()"
+          >
+            <form id="participant-form" class="av-auth-stack-sm" @submit.prevent="saveParticipant()">
+              <AvInput label="Name" name="participant-name" x-model="participantForm.name" required />
+              <AvInput label="Email (optional)" name="participant-email" type="email" x-model="participantForm.email" />
+              <AvSelect label="Participant type" name="participant-type" x-model="participantForm.participantType" required>
+                {participantTypes.map((type: string) => (
+                  <option value={type}>{formatParticipantTypeLabel(type as ParticipantType)}</option>
+                ))}
+              </AvSelect>
+              <AvSelect label="Time zone" name="participant-timezone" x-model="participantForm.timezone" required>
+                {timezoneOptions.map((zone: string) => (
+                  <option value={zone}>{zone}</option>
+                ))}
+              </AvSelect>
+              <div class="tz-form-grid">
+                <AvInput label="Availability start" name="availability-start" type="time" x-model="participantForm.availabilityStartLocal" required />
+                <AvInput label="Availability end" name="availability-end" type="time" x-model="participantForm.availabilityEndLocal" required />
+              </div>
+              <div class="tz-form-grid">
+                <AvInput label="Preferred start" name="preferred-start" type="time" x-model="participantForm.preferredStartLocal" />
+                <AvInput label="Preferred end" name="preferred-end" type="time" x-model="participantForm.preferredEndLocal" />
+              </div>
+              <AvCheckbox label="This participant is required" name="is-required" x-model="participantForm.isRequired" />
+            </form>
+
+            <Fragment slot="actions">
+              <AvButton variant="ghost" type="button" @click="$store.interviewScheduler.closeParticipantDrawer()">Cancel</AvButton>
+              <AvButton type="submit" form="participant-form" :disabled="participantLoading">Save participant</AvButton>
+            </Fragment>
+          </CreateDrawer>
+        </template>
+      </div>
+    </AvContainer>
+  </section>
+</AppShell>

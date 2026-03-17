@@ -1,0 +1,132 @@
+---
+import { AvButton, AvCard, AvContainer, AvEmptyState, AvInput, AvSelect, AvTextarea } from "@ansiversa/components";
+import { actions } from "astro:actions";
+import CreateDrawer from "../../components/drawers/CreateDrawer.astro";
+import AppShell from "../../layouts/AppShell.astro";
+import type { InterviewDTO, ParticipantType } from "../../modules/interview-scheduler/types";
+
+const title = "Your Interviews – Interview Scheduler";
+const description = "Create and manage saved interview scheduling workflows.";
+
+const listResult = await Astro.callAction(actions.interviewScheduler.listInterviews, {});
+const data = (listResult as any)?.data ?? (listResult as any) ?? {};
+const interviews = (data?.interviews ?? []) as InterviewDTO[];
+const timezoneOptions = Array.isArray(data?.timezoneOptions) ? data.timezoneOptions : [];
+const interviewStages = Array.isArray(data?.interviewStages) ? data.interviewStages : ["Screening"];
+const participantTypes = Array.isArray(data?.participantTypes)
+  ? (data.participantTypes as ParticipantType[])
+  : ["candidate", "interviewer", "observer"];
+
+const initialState = {
+  interviews,
+  timezoneOptions,
+  interviewStages,
+  participantTypes,
+};
+---
+
+<AppShell title={title} description={description}>
+  <section class="av-section">
+    <AvContainer>
+      <div
+        class="av-auth-stack-lg"
+        x-data="$store.interviewScheduler"
+        x-init="initList(JSON.parse($el.dataset.initial || '{}'))"
+        data-initial={JSON.stringify(initialState)}
+      >
+        <AvCard className="av-auth-stack-md">
+          <div class="av-row-between">
+            <div class="av-auth-stack-xs">
+              <p class="av-kicker">Interview Scheduler</p>
+              <h1 class="av-section-title">Saved interviews</h1>
+              <p class="av-text-soft">Create interview records, manage participants, and choose a final slot with ranked suggestions.</p>
+            </div>
+            <AvButton type="button" @click="openCreateDrawer()">New interview</AvButton>
+          </div>
+          <template x-if="error">
+            <div class="av-alert av-alert-danger" role="status" x-text="error"></div>
+          </template>
+          <template x-if="success">
+            <div class="av-alert av-alert-success" role="status" x-text="success"></div>
+          </template>
+        </AvCard>
+
+        <template x-if="createDrawerOpen">
+          <CreateDrawer
+            title="Create interview"
+            description="Set the interview context first, then add interviewers and other participants on the detail page."
+            onClose="$store.interviewScheduler.closeCreateDrawer()"
+          >
+            <form id="interview-create-form" class="av-auth-stack-sm" @submit.prevent="createInterview()">
+              <AvInput label="Title" name="title" placeholder="e.g. Backend Engineer - Final Panel" x-model="interviewForm.title" required />
+              <div class="tz-form-grid">
+                <AvInput label="Candidate name" name="candidate-name" x-model="interviewForm.candidateName" required />
+                <AvInput label="Candidate email (optional)" name="candidate-email" type="email" x-model="interviewForm.candidateEmail" />
+              </div>
+              <div class="tz-form-grid">
+                <AvInput label="Role title" name="role-title" x-model="interviewForm.roleTitle" required />
+                <AvInput label="Company name (optional)" name="company-name" x-model="interviewForm.companyName" />
+              </div>
+              <div class="tz-form-grid">
+                <AvSelect label="Interview stage" name="interview-stage" x-model="interviewForm.interviewStage" required>
+                  {interviewStages.map((stage: string) => (
+                    <option value={stage}>{stage}</option>
+                  ))}
+                </AvSelect>
+                <AvInput label="Interview date" name="meeting-date" type="date" x-model="interviewForm.meetingDate" required />
+              </div>
+              <AvInput label="Duration (minutes)" name="duration-minutes" type="number" min="15" step="15" x-model="interviewForm.durationMinutes" required />
+              <AvTextarea label="Notes" name="notes" rows={3} placeholder="Optional preparation or scheduling notes" x-model="interviewForm.notes" />
+            </form>
+
+            <Fragment slot="actions">
+              <AvButton variant="ghost" type="button" @click="$store.interviewScheduler.closeCreateDrawer()">Cancel</AvButton>
+              <AvButton type="submit" form="interview-create-form" :disabled="createLoading">Create interview</AvButton>
+            </Fragment>
+          </CreateDrawer>
+        </template>
+
+        <AvCard variant="soft" className="av-auth-stack-md">
+          <div class="av-row-between">
+            <h2 class="av-card-heading">All interviews</h2>
+            <p class="av-text-soft" x-text="`${interviews.length} total`"></p>
+          </div>
+
+          <template x-if="interviews.length === 0">
+            <AvEmptyState headline="No interviews yet" description="Create your first interview to start coordinating participants and slots." />
+          </template>
+
+          <template x-if="interviews.length > 0">
+            <div class="tz-schedule-grid">
+              <template x-for="interview in interviews" :key="interview.id">
+                <div class="av-card av-card-soft tz-schedule-card">
+                  <div class="av-auth-stack-sm">
+                    <div class="av-row-between">
+                      <div class="av-auth-stack-xxs">
+                        <h3 class="av-card-heading" x-text="interview.title"></h3>
+                        <p class="av-text-soft" x-text="`${interview.candidateName} · ${interview.roleTitle}${interview.companyName ? ` · ${interview.companyName}` : ''}`"></p>
+                      </div>
+                      <span class="tz-status-badge" :data-status="interview.status" x-text="interview.status"></span>
+                    </div>
+
+                    <div class="tz-meta-grid">
+                      <p class="av-text-soft"><strong>Stage:</strong> <span x-text="interview.interviewStage"></span></p>
+                      <p class="av-text-soft"><strong>Date:</strong> <span x-text="interview.meetingDate"></span></p>
+                      <p class="av-text-soft"><strong>Participants:</strong> <span x-text="interview.participantCount"></span></p>
+                      <p class="av-text-soft"><strong>Suggestions:</strong> <span x-text="interview.suggestionCount"></span></p>
+                    </div>
+
+                    <div class="av-row-wrap">
+                      <AvButton href="#" x-bind:href="`/app/interviews/${interview.id}`">Open</AvButton>
+                      <AvButton variant="ghost" type="button" @click={`if (confirm('Archive this interview?')) archiveInterview(interview.id)`}>Archive</AvButton>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </AvCard>
+      </div>
+    </AvContainer>
+  </section>
+</AppShell>
