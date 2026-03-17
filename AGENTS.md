@@ -69,5 +69,6 @@ V1 intentionally does not include organizations, team workspaces, recurring work
 
 ## Task Log (Recent)
 
+- 2026-03-17 Configured `interview-scheduler` production env files to the new Turso database (`interview-scheduler-ansiversa`) and verified remote schema push success with `npm run db:push`.
 - 2026-03-17 Bootstrapped Interview Scheduler V1 from `app-starter` V2: created `APP_META` identity, preserved the V2 public `/` + authenticated `/app` baseline, added interview-specific DB tables (`Interviews`, `InterviewParticipants`, `InterviewSuggestions`), implemented interview actions/store/pages and deterministic suggestion generation, included dashboard + notification integrations from day one, and documented intentional V1 deferrals. Verification: `npm run typecheck` ✅, `npm run build` ✅.
 - Keep newest first; include date and short summary.
