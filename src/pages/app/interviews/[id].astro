@@ -126,7 +126,7 @@ const description = "Manage participants, generate interview slots, and select t
                   </div>
                 </div>
               </template>
-              <template x-if="!interview?.selectedSuggestionId">
+              <template x-if="!interview?.selectedSuggestionId || !suggestions.find((suggestion) => suggestion.id === interview.selectedSuggestionId)">
                 <AvEmptyState headline="No final slot selected" description="Generate suggestions and choose one to mark the interview as scheduled." />
               </template>
             </div>
