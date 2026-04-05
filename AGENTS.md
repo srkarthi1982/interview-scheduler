@@ -69,6 +69,7 @@ V1 intentionally does not include organizations, team workspaces, recurring work
 
 ## Task Log (Recent)
 
+- 2026-04-05 Populated `docs/app-spec.md` with implementation-aligned V1 documentation for remaining release-app coverage.
 - 2026-03-18 Completed pre-launch full verification sweep (routing, interview CRUD, participant CRUD, suggestion selection states, empty/error handling, and build/typecheck). Applied safe UI fallback fix on `/app/interviews/[id]` so the Selected slot card now shows the empty-state message when `selectedSuggestionId` is stale/missing; re-verified with `npm run typecheck` and `npm run build` ✅.
 - 2026-03-18 Components lock sync: upgraded `@ansiversa/components` to `^0.0.169` and refreshed the lockfile for the pre-launch ecosystem lock. Verification: `npm run typecheck` ✅, `npm run build` ✅.
 - 2026-03-17 Configured `interview-scheduler` production env files to the new Turso database (`interview-scheduler-ansiversa`) and verified remote schema push success with `npm run db:push`.
